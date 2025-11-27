@@ -81,23 +81,23 @@ class _PlayerWidgetState extends State<PlayerWidget>
     videoTrackSubscription = EventBus()
         .on<VideoTrack>('video_track_changed')
         .listen((VideoTrack data) async {
-      _player.setVideoTrack(data);
-      await UserPreferences.setVideoTrack(data.id);
-    });
+          _player.setVideoTrack(data);
+          await UserPreferences.setVideoTrack(data.id);
+        });
 
     audioTrackSubscription = EventBus()
         .on<AudioTrack>('audio_track_changed')
         .listen((AudioTrack data) async {
-      _player.setAudioTrack(data);
-      await UserPreferences.setAudioTrack(data.language ?? 'null');
-    });
+          _player.setAudioTrack(data);
+          await UserPreferences.setAudioTrack(data.language ?? 'null');
+        });
 
     subtitleTrackSubscription = EventBus()
         .on<SubtitleTrack>('subtitle_track_changed')
         .listen((SubtitleTrack data) async {
-      _player.setSubtitleTrack(data);
-      await UserPreferences.setSubtitleTrack(data.language ?? 'null');
-    });
+          _player.setSubtitleTrack(data);
+          await UserPreferences.setSubtitleTrack(data.language ?? 'null');
+        });
 
     _initializePlayer();
   }
@@ -152,7 +152,7 @@ class _PlayerWidgetState extends State<PlayerWidget>
             extras: {
               'url': item.url,
               'startPosition':
-              itemWatchHistory?.watchDuration?.inMilliseconds ?? 0,
+                  itemWatchHistory?.watchDuration?.inMilliseconds ?? 0,
             },
           ),
         );
@@ -232,11 +232,11 @@ class _PlayerWidgetState extends State<PlayerWidget>
     }
 
     _connectivitySubscription = Connectivity().onConnectivityChanged.listen((
-        List<ConnectivityResult> results,
-        ) async {
+      List<ConnectivityResult> results,
+    ) async {
       bool hasConnection = results.any(
-            (connectivity) =>
-        connectivity == ConnectivityResult.mobile ||
+        (connectivity) =>
+            connectivity == ConnectivityResult.mobile ||
             connectivity == ConnectivityResult.wifi ||
             connectivity == ConnectivityResult.ethernet,
       );
@@ -244,8 +244,8 @@ class _PlayerWidgetState extends State<PlayerWidget>
       if (_isFirstCheck) {
         final currentConnectivity = await Connectivity().checkConnectivity();
         hasConnection = currentConnectivity.any(
-              (connectivity) =>
-          connectivity == ConnectivityResult.mobile ||
+          (connectivity) =>
+              connectivity == ConnectivityResult.mobile ||
               connectivity == ConnectivityResult.wifi ||
               connectivity == ConnectivityResult.ethernet,
         );
@@ -301,7 +301,7 @@ class _PlayerWidgetState extends State<PlayerWidget>
 
       var selectedAudioLanguage = await UserPreferences.getAudioTrack();
       var possibleAudioTrack = event.audio.firstWhere(
-            (x) => x.language == selectedAudioLanguage,
+        (x) => x.language == selectedAudioLanguage,
         orElse: AudioTrack.auto,
       );
 
@@ -309,7 +309,7 @@ class _PlayerWidgetState extends State<PlayerWidget>
 
       var selectedSubtitleLanguage = await UserPreferences.getSubtitleTrack();
       var possibleSubtitleLanguage = event.subtitle.firstWhere(
-            (x) => x.language == selectedSubtitleLanguage,
+        (x) => x.language == selectedSubtitleLanguage,
         orElse: SubtitleTrack.auto,
       );
 
@@ -359,12 +359,12 @@ class _PlayerWidgetState extends State<PlayerWidget>
       if (error.contains('Failed to open')) {
         _errorHandler.handleError(
           error,
-              () async {
+          () async {
             if (contentItem.contentType == ContentType.liveStream) {
               await _player.open(Media(contentItem.url));
             }
           },
-              (errorMessage) {
+          (errorMessage) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(errorMessage),
@@ -404,22 +404,22 @@ class _PlayerWidgetState extends State<PlayerWidget>
     contentItemIndexChangedSubscription = EventBus()
         .on<int>('player_content_item_index_changed')
         .listen((int index) async {
-      if (contentItem.contentType == ContentType.liveStream) {
-        final item = _queue![index];
-        contentItem = item;
+          if (contentItem.contentType == ContentType.liveStream) {
+            final item = _queue![index];
+            contentItem = item;
 
-        // --- INSERTION 3: EXTERNAL CHANGE SETTER ---
-        PlayerState.currentContent = contentItem;
-        // -------------------------------------------
+            // --- INSERTION 3: EXTERNAL CHANGE SETTER ---
+            PlayerState.currentContent = contentItem;
+            // -------------------------------------------
 
-        await _player.open(Playlist([Media(item.url)]), play: true);
-        EventBus().emit('player_content_item', item);
-        EventBus().emit('player_content_item_index', index);
-        _errorHandler.reset();
-      } else {
-        _player.jump(index);
-      }
-    });
+            await _player.open(Playlist([Media(item.url)]), play: true);
+            EventBus().emit('player_content_item', item);
+            EventBus().emit('player_content_item_index', index);
+            _errorHandler.reset();
+          } else {
+            _player.jump(index);
+          }
+        });
 
     if (mounted) {
       setState(() {
@@ -481,11 +481,11 @@ class _PlayerWidgetState extends State<PlayerWidget>
       aspectRatio: calculateAspectRatio(),
       child: isLoading
           ? Container(
-        color: Colors.black,
-        child: const Center(
-          child: CircularProgressIndicator(color: Colors.white),
-        ),
-      )
+              color: Colors.black,
+              child: const Center(
+                child: CircularProgressIndicator(color: Colors.white),
+              ),
+            )
           : _buildPlayerContent(),
     );
 
