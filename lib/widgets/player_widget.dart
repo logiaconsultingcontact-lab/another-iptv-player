@@ -11,6 +11,7 @@ import 'package:another_iptv_player/widgets/video_widget.dart';
 import 'package:audio_service/audio_service.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:media_kit/media_kit.dart' hide PlayerState;
 import 'package:media_kit_video/media_kit_video.dart';
 import '../../models/content_type.dart';
@@ -62,6 +63,8 @@ class _PlayerWidgetState extends State<PlayerWidget>
   String errorMessage = '';
   bool _wasDisconnected = false;
   bool _isFirstCheck = true;
+  int _currentItemIndex = 0;
+  bool _showChannelList = false;
 
   @override
   void initState() {
@@ -71,6 +74,8 @@ class _PlayerWidgetState extends State<PlayerWidget>
 
     // --- INSERTION 1: INITIAL CONTENT SET ---
     PlayerState.currentContent = widget.contentItem;
+    PlayerState.queue = _queue;
+    PlayerState.currentIndex = 0;
     // ----------------------------------------
 
     PlayerState.title = widget.contentItem.name;
@@ -159,9 +164,11 @@ class _PlayerWidgetState extends State<PlayerWidget>
 
         if (item.id == contentItem.id) {
           currentItemIndex = i;
+          _currentItemIndex = i;
 
           if (contentItem.contentType == ContentType.liveStream) {
             currentItemIndex = 0;
+            _currentItemIndex = 0;
             contentItem = item;
 
             mediaItems.add(
@@ -383,16 +390,23 @@ class _PlayerWidgetState extends State<PlayerWidget>
         return;
       }
 
-      currentItemIndex = playlist.index;
+      _currentItemIndex = playlist.index;
+      currentItemIndex = _currentItemIndex;
       contentItem = _queue?[playlist.index] ?? widget.contentItem;
 
       // --- INSERTION 2: QUEUE CHANGE SETTER ---
       PlayerState.currentContent = contentItem;
+      PlayerState.currentIndex = _currentItemIndex;
       // ----------------------------------------
 
       PlayerState.title = contentItem.name;
       EventBus().emit('player_content_item', contentItem);
       EventBus().emit('player_content_item_index', playlist.index);
+      
+      // Kanal listesi açıksa güncelle
+      if (_showChannelList && mounted) {
+        setState(() {});
+      }
     });
 
     _player.stream.completed.listen((playlist) async {
@@ -410,16 +424,33 @@ class _PlayerWidgetState extends State<PlayerWidget>
 
             // --- INSERTION 3: EXTERNAL CHANGE SETTER ---
             PlayerState.currentContent = contentItem;
+            PlayerState.currentIndex = index;
+            _currentItemIndex = index;
             // -------------------------------------------
 
             await _player.open(Playlist([Media(item.url)]), play: true);
             EventBus().emit('player_content_item', item);
             EventBus().emit('player_content_item_index', index);
             _errorHandler.reset();
+            
+            // Kanal listesi açıksa güncelle
+            if (_showChannelList && mounted) {
+              setState(() {});
+            }
           } else {
             _player.jump(index);
           }
         });
+
+    // Kanal listesi göster/gizle event'i
+    EventBus().on<bool>('toggle_channel_list').listen((bool show) {
+      if (mounted) {
+        setState(() {
+          _showChannelList = show;
+          PlayerState.showChannelList = show;
+        });
+      }
+    });
 
     if (mounted) {
       setState(() {
@@ -438,6 +469,273 @@ class _PlayerWidgetState extends State<PlayerWidget>
         break;
       default:
         break;
+    }
+  }
+
+  void _changeChannel(int direction) {
+    if (_queue == null || _queue!.length <= 1) return;
+    
+    final newIndex = _currentItemIndex + direction;
+    if (newIndex < 0 || newIndex >= _queue!.length) return;
+    
+    EventBus().emit('player_content_item_index_changed', newIndex);
+  }
+
+  Widget _buildChannelListOverlay(BuildContext context) {
+    final items = _queue!;
+    final currentContent = PlayerState.currentContent;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final panelWidth = (screenWidth / 3).clamp(200.0, 400.0);
+    
+    // Mevcut index'i bul
+    int selectedIndex = _currentItemIndex;
+    if (currentContent != null) {
+      final foundIndex = items.indexWhere((item) => item.id == currentContent.id);
+      if (foundIndex != -1) {
+        selectedIndex = foundIndex;
+      }
+    }
+
+    return Positioned.fill(
+      child: GestureDetector(
+        onTap: () {
+          setState(() {
+            _showChannelList = false;
+          });
+        },
+        child: Container(
+          color: Colors.black.withOpacity(0.3),
+          child: Align(
+            alignment: Alignment.centerRight,
+            child: GestureDetector(
+              onTap: () {}, // Panel içine tıklanınca kapanmasın
+              child: Container(
+                width: panelWidth,
+                height: double.infinity,
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.95),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.5),
+                      blurRadius: 10,
+                      spreadRadius: 2,
+                    ),
+                  ],
+                ),
+                child: Column(
+                  children: [
+                    // Header
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.8),
+                        border: Border(
+                          bottom: BorderSide(color: Colors.grey[800]!, width: 1),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              'Kanal Seç',
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                          Text(
+                            '${selectedIndex + 1} / ${items.length}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[400],
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          IconButton(
+                            icon: const Icon(Icons.close, color: Colors.white, size: 20),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                            onPressed: () {
+                              setState(() {
+                                _showChannelList = false;
+                              });
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                    // Channel list
+                    Expanded(
+                      child: ListView.builder(
+                        padding: const EdgeInsets.all(12),
+                        itemCount: items.length,
+                        itemBuilder: (context, index) {
+                          final item = items[index];
+                          final isSelected = index == selectedIndex;
+                          
+                          return _buildChannelListItem(
+                            context,
+                            item,
+                            index,
+                            isSelected,
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildChannelListItem(
+    BuildContext context,
+    ContentItem item,
+    int index,
+    bool isSelected,
+  ) {
+    return InkWell(
+      onTap: () {
+        EventBus().emit('player_content_item_index_changed', index);
+        // Panel kapanmasın, sadece kanal değişsin
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? Theme.of(context).colorScheme.primaryContainer.withOpacity(0.3)
+              : Colors.white.withOpacity(0.05),
+          borderRadius: BorderRadius.circular(8),
+          border: isSelected
+              ? Border.all(
+                  color: Theme.of(context).colorScheme.primary,
+                  width: 2,
+                )
+              : Border.all(
+                  color: Colors.grey[800]!,
+                  width: 1,
+                ),
+        ),
+        child: Row(
+          children: [
+            // Thumbnail
+            if (item.imagePath.isNotEmpty)
+              ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: Image.network(
+                  item.imagePath,
+                  width: 50,
+                  height: 35,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Container(
+                      width: 50,
+                      height: 35,
+                      color: Colors.grey[800],
+                      child: const Icon(Icons.image, color: Colors.grey, size: 20),
+                    );
+                  },
+                ),
+              )
+            else
+              Container(
+                width: 50,
+                height: 35,
+                decoration: BoxDecoration(
+                  color: Colors.grey[800],
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: const Icon(Icons.video_library, color: Colors.grey, size: 20),
+              ),
+            const SizedBox(width: 10),
+            // Title and info
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    item.name,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                      color: Colors.white,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Icon(
+                        _getContentTypeIcon(item.contentType),
+                        size: 11,
+                        color: Colors.grey[500],
+                      ),
+                      const SizedBox(width: 4),
+                      Flexible(
+                        child: Text(
+                          _getContentTypeDisplayNameForItem(item.contentType),
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Colors.grey[500],
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            if (isSelected)
+              Icon(
+                Icons.check_circle,
+                color: Theme.of(context).colorScheme.primary,
+                size: 20,
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  IconData _getContentTypeIcon(ContentType contentType) {
+    switch (contentType) {
+      case ContentType.liveStream:
+        return Icons.live_tv;
+      case ContentType.vod:
+        return Icons.movie;
+      case ContentType.series:
+        return Icons.tv;
+    }
+  }
+
+  String _getContentTypeDisplayNameForItem(ContentType contentType) {
+    switch (contentType) {
+      case ContentType.liveStream:
+        return 'Canlı Yayın';
+      case ContentType.vod:
+        return 'Film';
+      case ContentType.series:
+        return 'Dizi';
+    }
+  }
+
+  String _formatDuration(Duration duration) {
+    final hours = duration.inHours;
+    final minutes = duration.inMinutes.remainder(60);
+    
+    if (hours > 0) {
+      return '${hours}s ${minutes}dk';
+    } else {
+      return '${minutes}dk';
     }
   }
 
@@ -527,21 +825,39 @@ class _PlayerWidgetState extends State<PlayerWidget>
       );
     }
 
-    return Stack(
-      children: [
-        getVideo(context, _videoController!, PlayerState.subtitleConfiguration),
+    return GestureDetector(
+      onVerticalDragEnd: (details) {
+        if (_queue == null || _queue!.length <= 1) return;
+        
+        // Yukarı swipe - sonraki kanal
+        if (details.primaryVelocity != null && details.primaryVelocity! < -500) {
+          _changeChannel(1);
+        }
+        // Aşağı swipe - önceki kanal
+        else if (details.primaryVelocity != null && details.primaryVelocity! > 500) {
+          _changeChannel(-1);
+        }
+      },
+      child: Stack(
+        children: [
+          getVideo(context, _videoController!, PlayerState.subtitleConfiguration),
 
-        if (widget.onFullscreen != null)
-          Positioned(
-            top: 8,
-            right: 8,
-            child: IconButton(
-              onPressed: widget.onFullscreen,
-              icon: const Icon(Icons.fullscreen, color: Colors.white, size: 24),
-              style: IconButton.styleFrom(backgroundColor: Colors.black54),
+          if (widget.onFullscreen != null)
+            Positioned(
+              top: 8,
+              right: 8,
+              child: IconButton(
+                onPressed: widget.onFullscreen,
+                icon: const Icon(Icons.fullscreen, color: Colors.white, size: 24),
+                style: IconButton.styleFrom(backgroundColor: Colors.black54),
+              ),
             ),
-          ),
-      ],
+
+          // Kanal listesi overlay - normal mod için
+          if (_showChannelList && _queue != null && _queue!.length > 1)
+            _buildChannelListOverlay(context),
+        ],
+      ),
     );
   }
 }

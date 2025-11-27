@@ -1,5 +1,7 @@
 import 'package:another_iptv_player/services/player_state.dart';
 import 'package:another_iptv_player/widgets/player-buttons/back_button_widget.dart';
+import 'package:another_iptv_player/widgets/player-buttons/video_channel_selector_widget.dart';
+import 'package:another_iptv_player/widgets/player-buttons/video_info_widget.dart';
 import 'package:another_iptv_player/widgets/player-buttons/video_settings_widget.dart';
 import 'package:another_iptv_player/widgets/player-buttons/video_title_widget.dart';
 import 'package:flutter/material.dart';
@@ -24,6 +26,11 @@ Widget getVideo(
           topButtonBar: [
             BackButtonWidget(),
             Expanded(child: VideoTitleWidget()),
+            VideoInfoWidget(),
+            VideoChannelSelectorWidget(
+              queue: PlayerState.queue,
+              currentIndex: PlayerState.currentIndex,
+            ),
             VideoSettingsWidget(),
           ],
         ),
@@ -36,6 +43,11 @@ Widget getVideo(
           topButtonBar: [
             BackButtonWidget(),
             Expanded(child: VideoTitleWidget()),
+            VideoInfoWidget(),
+            VideoChannelSelectorWidget(
+              queue: PlayerState.queue,
+              currentIndex: PlayerState.currentIndex,
+            ),
             VideoSettingsWidget(),
           ],
           seekBarMargin: EdgeInsets.fromLTRB(0, 0, 0, 10),
@@ -59,6 +71,11 @@ Widget getVideo(
           topButtonBar: [
             BackButtonWidget(),
             Expanded(child: VideoTitleWidget()),
+            VideoInfoWidget(),
+            VideoChannelSelectorWidget(
+              queue: PlayerState.queue,
+              currentIndex: PlayerState.currentIndex,
+            ),
             VideoSettingsWidget(),
           ],
         ),
@@ -68,6 +85,11 @@ Widget getVideo(
           topButtonBar: [
             BackButtonWidget(),
             Expanded(child: VideoTitleWidget()),
+            VideoInfoWidget(),
+            VideoChannelSelectorWidget(
+              queue: PlayerState.queue,
+              currentIndex: PlayerState.currentIndex,
+            ),
             VideoSettingsWidget(),
           ],
         ),

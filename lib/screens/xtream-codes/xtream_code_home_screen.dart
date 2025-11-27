@@ -182,9 +182,9 @@ class _XtreamCodeHomeScreenState extends State<XtreamCodeHomeScreen> {
     ContentType contentType,
   ) {
     if (ResponsiveHelper.isDesktopOrTV(context)) {
-      return _buildDesktopSliverAppBar(context, contentType);
+      return _buildDesktopAppBar(context, contentType);
     }
-    return _buildMobileSliverAppBar(context, controller, contentType);
+    return _buildMobileAppBar(context, controller, contentType);
   }
 
   AppBar _buildDesktopAppBar(BuildContext context, ContentType contentType) {
@@ -193,8 +193,6 @@ class _XtreamCodeHomeScreenState extends State<XtreamCodeHomeScreen> {
         _getDesktopTitle(context, contentType),
         style: const TextStyle(fontWeight: FontWeight.bold),
       ),
-      floating: true,
-      snap: true,
       elevation: 0,
       actions: [
         IconButton(
@@ -226,8 +224,6 @@ class _XtreamCodeHomeScreenState extends State<XtreamCodeHomeScreen> {
         controller.getPageTitle(context),
         style: const TextStyle(fontWeight: FontWeight.bold),
       ),
-      floating: true,
-      snap: true,
       elevation: 0,
       actions: [
         IconButton(
